@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  slurm:
+    image: giovtorres/docker-centos7-slurm:21.08.0
+    hostname: slurmctl
+    container_name: slurmctl
+    working_dir: /mlflow-slurm
+    stdin_open: true
+    tty: true
+    environment:
+      PYTHON: "3.9"
+    volumes:
+      - ./:/mlflow-slurm
