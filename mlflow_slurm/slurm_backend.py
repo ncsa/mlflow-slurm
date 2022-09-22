@@ -1,9 +1,12 @@
-import pyslurm
+import re
 import shlex
+import subprocess
 from pathlib import Path
 from typing import Tuple, List
 
 from jinja2 import Environment, BaseLoader
+from mlflow.utils.logging_utils import _configure_mlflow_loggers
+
 from mlflow import tracking
 
 import mlflow
@@ -25,22 +28,26 @@ from mlflow.utils.mlflow_tags import MLFLOW_PROJECT_ENV
 from mlflow.utils.virtualenv import _install_python, _get_mlflow_virtualenv_root, \
     _get_virtualenv_name, _create_virtualenv
 
+_configure_mlflow_loggers(root_module_name=__name__)
 _logger = logging.getLogger(__name__)
+_logger.setLevel("DEBUG")
 
 
 def slurm_backend_builder() -> AbstractBackend:
-    return SlrumProjectBackend()
+    return SlurmProjectBackend()
+
 
 class SlurmSubmittedRun(SubmittedRun):
     """Instance of SubmittedRun
        corresponding to a Slum Job launched through pySlurm to run an MLflow
        project.
-    :param skein_app_id: ID of the submitted Skein Application.
+    :param slurm_job_id: ID of the submitted Slurm Job.
     :param mlflow_run_id: ID of the MLflow project run.
     """
-    def __init__(self, mlflow_run_id: str) -> None:
+    def __init__(self, mlflow_run_id: str, slurm_job_id: str) -> None:
         super().__init__()
         self._mlflow_run_id = mlflow_run_id
+        self.slurm_job_id = slurm_job_id
 
     @property
     def run_id(self) -> str:
@@ -58,32 +65,45 @@ class SlurmSubmittedRun(SubmittedRun):
         return RunStatus.SCHEDULED
 
 
+class SlurmProjectBackend(AbstractBackend):
+    @staticmethod
+    def sbatch(script: str):
+        job_re = "Submitted batch job (\\d+)"
+        with subprocess.Popen(f"sbatch {script}",
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, shell=True) as p:
+            return_code = p.wait()
+            if return_code == 0:
+                sbatch_output = p.stdout.read().decode('utf-8')
+                match = re.search(job_re, sbatch_output)
+                if not match:
+                    print(f"Couldn't parse batch output: {sbatch_output}")
+                    return None
+                else:
+                    return match.group(1)
+            else:
+                sbatch_err = p.stderr.read().decode('utf-8')
+                print(f"SBatch Error:{sbatch_err}")
+                return None
 
-class SlrumProjectBackend(AbstractBackend):
     def run(self, project_uri, entry_point, params, version, backend_config, tracking_uri,
             experiment_id):
-        print("Ready to sluuuu")
-        _logger.warning("Ready to Slurm")
+
         work_dir = fetch_and_validate_project(project_uri, version, entry_point, params)
         active_run = get_or_create_run(None, project_uri, experiment_id, work_dir, version,
                                        entry_point, params)
-        _logger.warning(f"run_id={active_run.info.run_id}")
-        _logger.warning(f"work_dir={work_dir}")
+        _logger.info(f"run_id={active_run.info.run_id}")
+        _logger.info(f"work_dir={work_dir}")
+
         project = load_project(work_dir)
-        print(project)
 
         storage_dir = backend_config[PROJECT_STORAGE_DIR]
 
         entry_point_command = project.get_entry_point(entry_point) \
             .compute_command(params, storage_dir)
 
-        _logger.warn(f"entry_point_command={entry_point_command}")
+        _logger.info(f"entry_point_command={entry_point_command}")
 
-        env = {
-            "MLFLOW_RUN_ID": active_run.info.run_id,
-            "MLFLOW_TRACKING_URI": mlflow.get_tracking_uri(),
-            "MLFLOW_EXPERIMENT_ID": experiment_id
-        }
         command_args = []
         command_separator = " "
         env_manager = backend_config[PROJECT_ENV_MANAGER]
@@ -111,27 +131,23 @@ class SlrumProjectBackend(AbstractBackend):
             conda_env_name = get_or_create_conda_env(project.env_config_path)
             command_args += get_conda_command(conda_env_name)
 
-
-
         command_args += get_entry_point_command(project, entry_point, params, storage_dir)
         command_str = command_separator.join(command_args)
 
         job_template = """#!/bin/bash
+#SBATCH --job-name=Popen
+#SBATCH --partition=normal
+#SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID
+
 {{ command }}
         """
         template = Environment(loader=BaseLoader()).from_string(job_template)
         with open("generated.sh", "w") as text_file:
             text_file.write(template.render(command=command_str))
 
-        jobs = pyslurm.job()
-        j = jobs.submit_batch_job({
-            'script': "generated.sh",
-            'job_name': "pySlurm",
-            'partition': 'normal',
-            'export': 'MLFLOW_TRACKING_URI,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID'
-        })
+        job_id = SlurmProjectBackend.sbatch("generated.sh")
 
-        return SlurmSubmittedRun(active_run.info.run_id)
+        return SlurmSubmittedRun(active_run.info.run_id, job_id)
 
     def __init__(self):
         pass
