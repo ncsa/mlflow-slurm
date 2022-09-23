@@ -132,7 +132,7 @@ class SlurmProjectBackend(AbstractBackend):
         command_str = command_separator.join(command_args)
 
         job_template = """#!/bin/bash
-#SBATCH --job-name=Popen
+#SBATCH --job-name=MLFlow{{ run_id }}
 #SBATCH --partition={{ config.partition }}
 #SBATCH --account={{ config.account }}
 #SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID
@@ -141,7 +141,9 @@ class SlurmProjectBackend(AbstractBackend):
         """
         template = Environment(loader=BaseLoader()).from_string(job_template)
         with open("generated.sh", "w") as text_file:
-            text_file.write(template.render(command=command_str, config=backend_config))
+            text_file.write(template.render(command=command_str,
+                                            config=backend_config,
+                                            run_id=active_run.info.run_id))
 
         job_id = SlurmProjectBackend.sbatch("generated.sh")
 
