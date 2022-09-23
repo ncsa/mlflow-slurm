@@ -133,14 +133,14 @@ class SlurmProjectBackend(AbstractBackend):
 
         job_template = """#!/bin/bash
 #SBATCH --job-name=Popen
-#SBATCH --partition=normal
+#SBATCH --partition={{ config.partition }}
 #SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID
 
 {{ command }}
         """
         template = Environment(loader=BaseLoader()).from_string(job_template)
         with open("generated.sh", "w") as text_file:
-            text_file.write(template.render(command=command_str))
+            text_file.write(template.render(command=command_str, config=backend_config))
 
         job_id = SlurmProjectBackend.sbatch("generated.sh")
 
