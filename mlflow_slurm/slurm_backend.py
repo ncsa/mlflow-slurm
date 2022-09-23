@@ -122,7 +122,7 @@ class SlurmProjectBackend(AbstractBackend):
             env_dir = Path(env_root).joinpath(env_name)
             activate_cmd = _create_virtualenv(work_dir_path, python_bin_path, env_dir, python_env)
             command_args += [activate_cmd]
-        elif env_manager == "conda_env":
+        elif project.env_type== "conda_env":
             tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV, "conda")
             command_separator = " && "
             conda_env_name = get_or_create_conda_env(project.env_config_path)
