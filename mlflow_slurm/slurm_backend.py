@@ -114,10 +114,7 @@ class SlurmProjectBackend(AbstractBackend):
                 active_run.info.run_id, MLFLOW_PROJECT_ENV, "virtualenv"
             )
             command_separator = " && "
-            if project.env_type == env_type.CONDA:
-                python_env = _PythonEnv.from_conda_yaml(project.env_config_path)
-            else:
-                python_env = _PythonEnv.from_yaml(project.env_config_path)
+            python_env = _PythonEnv.from_yaml(project.env_config_path)
             python_bin_path = _install_python(python_env.python)
             env_root = _get_mlflow_virtualenv_root()
             work_dir_path = Path(work_dir)
@@ -125,7 +122,7 @@ class SlurmProjectBackend(AbstractBackend):
             env_dir = Path(env_root).joinpath(env_name)
             activate_cmd = _create_virtualenv(work_dir_path, python_bin_path, env_dir, python_env)
             command_args += [activate_cmd]
-        elif env_manager == _EnvManager.CONDA:
+        elif env_manager == "conda_env":
             tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV, "conda")
             command_separator = " && "
             conda_env_name = get_or_create_conda_env(project.env_config_path)
