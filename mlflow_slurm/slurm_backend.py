@@ -134,6 +134,7 @@ class SlurmProjectBackend(AbstractBackend):
         job_template = """#!/bin/bash
 #SBATCH --job-name=Popen
 #SBATCH --partition={{ config.partition }}
+#SBATCH --account={{ config.account }}
 #SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID
 
 {{ command }}
