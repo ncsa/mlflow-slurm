@@ -149,6 +149,7 @@ class SlurmProjectBackend(AbstractBackend):
                                             run_id=active_run.info.run_id))
 
         job_id = SlurmProjectBackend.sbatch("generated.sh")
+        MlflowClient().set_tag(active_run.info.run_id, "slurm_job_id", job_id)
 
         return SlurmSubmittedRun(active_run.info.run_id, job_id)
 
