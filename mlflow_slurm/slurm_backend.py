@@ -176,6 +176,10 @@ class SlurmProjectBackend(AbstractBackend):
 {% if config.gpus_per_node %}
 #SBATCH --gpus-per-node={{ config.gpus_per_node }}
 {% endif %}
+{% for module in config.modules %}
+module load {{ module }}
+{% endfor %}
+
 
 {{ command }}
         """
