@@ -1,0 +1,20 @@
+# Python version required to run the project.
+python: "3.7"
+# Dependencies required to build packages. This field is optional.
+build_dependencies:
+  - pip
+  - setuptools
+  - wheel==0.37.1
+# Dependencies required to run the project.
+dependencies:
+  - mlflow
+  - scikit-learn==1.0.2
+  - pandas
+  - boto3
+  - numpy
+  - click
+  - scipy
+  - tensorflow==1.13.1
+  - matplotlib
+  - keras==2.3.1
+  - hyperopt

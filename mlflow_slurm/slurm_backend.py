@@ -1,6 +1,8 @@
 import re
 import shlex
 import subprocess
+import time
+from threading import RLock
 from pathlib import Path
 from typing import Tuple, List
 
@@ -48,21 +50,56 @@ class SlurmSubmittedRun(SubmittedRun):
         super().__init__()
         self._mlflow_run_id = mlflow_run_id
         self.slurm_job_id = slurm_job_id
+        self._status = RunStatus.SCHEDULED
+        self._status_lock = RLock()
+
+    # How often to poll run status when waiting on a run
+    POLL_STATUS_INTERVAL = 5
 
     @property
     def run_id(self) -> str:
         return self._mlflow_run_id
 
-    def wait(self) -> bool:
-        print("Wating...")
-        return False
+    def wait(self):
+        while not RunStatus.is_terminated(self._update_status()):
+            time.sleep(self.POLL_STATUS_INTERVAL)
+
+        return self._status == RunStatus.FINISHED
 
     def cancel(self) -> None:
         print("Cancel")
 
     def get_status(self) -> RunStatus:
-        print("Get status")
-        return RunStatus.SCHEDULED
+        return self._status
+
+    def _update_status(self) -> RunStatus:
+        with subprocess.Popen(f"squeue --job={self.slurm_job_id} -o%A,%t",
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, shell=True,
+                              universal_newlines=True) as p:
+            p.wait()
+            output = p.stdout.read().split('\n')
+            job = output[1]  # First line is header
+            if not job:
+                _logger.warning(f"Looking for status of job {self.slurm_job_id}, but it is gone")
+                return None
+
+            job_status = output[1].split(",")[1]
+            if job_status == "PD":
+                return RunStatus.SCHEDULED
+            elif job_status == "CD":
+                return RunStatus.FINISHED
+            elif job_status == "F":
+                return RunStatus.FAILED
+            elif job_status == "R" \
+                    or job_status == "S" \
+                    or job_status == "ST" \
+                    or job_status == "CG" \
+                    or job_status == "PR":
+                return RunStatus.RUNNING
+            else:
+                _logger.warning(f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
+                return None
 
 
 class SlurmProjectBackend(AbstractBackend):
