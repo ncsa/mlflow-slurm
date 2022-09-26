@@ -176,6 +176,9 @@ class SlurmProjectBackend(AbstractBackend):
 {% if config.gpus_per_node %}
 #SBATCH --gpus-per-node={{ config.gpus_per_node }}
 {% endif %}
+{% if config.mem %}
+#SBATCH --mem={{ config.mem }}
+{% endif %}
 {% for module in config.modules %}
 module load {{ module }}
 {% endfor %}
@@ -183,7 +186,11 @@ module load {{ module }}
 
 {{ command }}
         """
-        template = Environment(loader=BaseLoader()).from_string(job_template)
+        template = Environment(
+            loader=BaseLoader(),
+            trim_blocks=True
+        ).from_string(job_template)
+
         with open("generated.sh", "w") as text_file:
             text_file.write(template.render(command=command_str,
                                             config=backend_config,
