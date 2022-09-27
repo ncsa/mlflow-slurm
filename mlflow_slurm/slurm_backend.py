@@ -60,8 +60,12 @@ class SlurmSubmittedRun(SubmittedRun):
     def run_id(self) -> str:
         return self._mlflow_run_id
 
+    def is_terminated_or_gone(self):
+        self._update_status()
+        return not self._status or RunStatus.is_terminated(self._status)
+
     def wait(self):
-        while not RunStatus.is_terminated(self._update_status()):
+        while not self.is_terminated_or_gone()
             time.sleep(self.POLL_STATUS_INTERVAL)
 
         return self._status == RunStatus.FINISHED
@@ -80,26 +84,27 @@ class SlurmSubmittedRun(SubmittedRun):
             p.wait()
             output = p.stdout.read().split('\n')
             job = output[1]  # First line is header
-            if not job:
-                _logger.warning(f"Looking for status of job {self.slurm_job_id}, but it is gone")
-                return None
+            with self._status_lock:
+                if not job:
+                    _logger.warning(f"Looking for status of job {self.slurm_job_id}, but it is gone")
+                    self._status = RunStatus.FINISHED
 
-            job_status = output[1].split(",")[1]
-            if job_status == "PD":
-                return RunStatus.SCHEDULED
-            elif job_status == "CD":
-                return RunStatus.FINISHED
-            elif job_status == "F":
-                return RunStatus.FAILED
-            elif job_status == "R" \
-                    or job_status == "S" \
-                    or job_status == "ST" \
-                    or job_status == "CG" \
-                    or job_status == "PR":
-                return RunStatus.RUNNING
-            else:
-                _logger.warning(f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
-                return None
+                job_status = output[1].split(",")[1]
+                if job_status == "PD":
+                    self._status = RunStatus.SCHEDULED
+                elif job_status == "CD":
+                    self._status = RunStatus.FINISHED
+                elif job_status == "F":
+                    self._status = RunStatus.FAILED
+                elif job_status == "R" \
+                        or job_status == "S" \
+                        or job_status == "ST" \
+                        or job_status == "CG" \
+                        or job_status == "PR":
+                    self._status RunStatus.RUNNING
+                else:
+                    _logger.warning(f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
+                    self._status =  None
 
 
 class SlurmProjectBackend(AbstractBackend):
