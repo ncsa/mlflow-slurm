@@ -65,7 +65,7 @@ class SlurmSubmittedRun(SubmittedRun):
         return not self._status or RunStatus.is_terminated(self._status)
 
     def wait(self):
-        while not self.is_terminated_or_gone()
+        while not self.is_terminated_or_gone():
             time.sleep(self.POLL_STATUS_INTERVAL)
 
         return self._status == RunStatus.FINISHED
@@ -77,7 +77,7 @@ class SlurmSubmittedRun(SubmittedRun):
         return self._status
 
     def _update_status(self) -> RunStatus:
-        with subprocess.Popen(f"squeue --job={self.slurm_job_id} -o%A,%t",
+        with subprocess.Popen(f"squeue --state=all --job={self.slurm_job_id} -o%A,%t",
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, shell=True,
                               universal_newlines=True) as p:
@@ -101,7 +101,7 @@ class SlurmSubmittedRun(SubmittedRun):
                         or job_status == "ST" \
                         or job_status == "CG" \
                         or job_status == "PR":
-                    self._status RunStatus.RUNNING
+                    self._status = RunStatus.RUNNING
                 else:
                     _logger.warning(f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
                     self._status =  None
