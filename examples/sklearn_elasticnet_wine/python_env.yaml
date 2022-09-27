@@ -11,3 +11,5 @@ dependencies:
   - scikit-learn==1.0.2
   - pandas
   - boto3
+  - git+https://github.com/ncsa/mlflow-slurm.git@initial
+
