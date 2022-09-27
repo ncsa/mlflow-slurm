@@ -57,6 +57,8 @@ def run(training_data, max_runs, max_p, epochs, metric, seed):
                     },
                     experiment_id=experiment_id,
                     synchronous=False,
+                    backend="slurm",
+                    backend_config="slurm_config.json"
                 )
                 succeeded = p.wait()
                 mlflow.log_params({"lr": lr, "momentum": momentum})
@@ -88,11 +90,16 @@ def run(training_data, max_runs, max_p, epochs, metric, seed):
         experiment_id = run.info.experiment_id
         _, null_train_loss, null_val_loss, null_test_loss = new_eval(0, experiment_id)((0, 0))
         runs = [(np.random.uniform(1e-5, 1e-1), np.random.uniform(0, 1.0)) for _ in range(max_runs)]
-        with ThreadPoolExecutor(max_workers=max_p) as executor:
-            _ = executor.map(
-                new_eval(epochs, experiment_id, null_train_loss, null_val_loss, null_test_loss),
-                runs,
-            )
+        jobs = []
+        for params in runs:
+            jobs.append(new_eval(epochs, experiment_id, null_train_loss, null_val_loss, null_test_loss)(params))
+
+        print("Started up the jobs ", jobs)
+        # with ThreadPoolExecutor(max_workers=max_p) as executor:
+        #     _ = executor.map(
+        #         new_eval(epochs, experiment_id, null_train_loss, null_val_loss, null_test_loss),
+        #         runs,
+        #     )
 
         # find the best run, log its metrics as the final metrics of this run.
         client = MlflowClient()
