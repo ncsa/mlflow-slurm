@@ -9,3 +9,5 @@ dependencies:
       - mlflow>=1.0
       - pandas
       - boto3
+      - git+https://github.com/ncsa/mlflow-slurm.git@initial
+   
