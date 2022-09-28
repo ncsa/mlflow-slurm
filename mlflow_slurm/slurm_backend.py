@@ -6,7 +6,7 @@ from threading import RLock
 from pathlib import Path
 from typing import Tuple, List
 
-from jinja2 import Environment, BaseLoader
+from jinja2 import Environment, BaseLoader, PackageLoader
 from mlflow.utils.logging_utils import _configure_mlflow_loggers
 
 from mlflow import tracking
@@ -164,7 +164,7 @@ class SlurmProjectBackend(AbstractBackend):
             env_dir = Path(env_root).joinpath(env_name)
             activate_cmd = _create_virtualenv(work_dir_path, python_bin_path, env_dir, python_env)
             command_args += [activate_cmd]
-        elif project.env_type== "conda_env":
+        elif project.env_type == "conda_env":
             tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV, "conda")
             command_separator = " && "
             conda_env_name = get_or_create_conda_env(project.env_config_path)
@@ -173,41 +173,28 @@ class SlurmProjectBackend(AbstractBackend):
         command_args += get_entry_point_command(project, entry_point, params, storage_dir)
         command_str = command_separator.join(command_args)
 
-        job_template = """#!/bin/bash
-#SBATCH --job-name=MLFlow{{ run_id }}
-#SBATCH --partition={{ config.partition }}
-#SBATCH --account={{ config.account }}
-#SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID
-{% if config.gpus_per_node %}
-#SBATCH --gpus-per-node={{ config.gpus_per_node }}
-{% endif %}
-{% if config.mem %}
-#SBATCH --mem={{ config.mem }}
-{% endif %}
-{% for module in config.modules %}
-module load {{ module }}
-{% endfor %}
+        sbatch_file = backend_config.get("sbatch-script-file", f"sbatch-{active_run.info.run_id}.sh")
+        generate_sbatch_script(command_str, backend_config, active_run.info.run_id, sbatch_file)
 
-
-{{ command }}
-        """
-        template = Environment(
-            loader=BaseLoader(),
-            trim_blocks=True
-        ).from_string(job_template)
-
-        with open("generated.sh", "w") as text_file:
-            text_file.write(template.render(command=command_str,
-                                            config=backend_config,
-                                            run_id=active_run.info.run_id))
-
-        job_id = SlurmProjectBackend.sbatch("generated.sh")
+        job_id = SlurmProjectBackend.sbatch(sbatch_file)
         MlflowClient().set_tag(active_run.info.run_id, "slurm_job_id", job_id)
 
         return SlurmSubmittedRun(active_run.info.run_id, job_id)
 
     def __init__(self):
         pass
+
+
+def generate_sbatch_script(command_str=None, backend_config=None, run_id=None, script_file="generated.sh"):
+    template = Environment(
+        loader=PackageLoader("mlflow_slurm", "templates"),
+        trim_blocks=True
+    ).get_template("sbatch_template.sh")
+
+    with open(script_file, "w") as text_file:
+        text_file.write(template.render(command=command_str,
+                                        config=backend_config,
+                                        run_id=run_id))
 
 
 def try_split_cmd(cmd: str) -> Tuple[str, List[str]]:
