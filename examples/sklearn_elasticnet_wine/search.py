@@ -27,10 +27,10 @@ def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"
 @click.command(help="Perform grid search over train (main entry point).")
 @click.option("--num-runs", type=click.INT, default=32, help="Maximum number of runs to evaluate.")
 @click.option("--train-backend-config", type=click.STRING, default="slurm_config.json", help="Json file for training jobs")
-def run(num_runs):
+def run(num_runs, train_backend_config):
     with mlflow.start_run() as run:
         experiment_id = run.info.experiment_id
-        p = run_train(experiment_id, alpha=0.4, l1_ratio=0.1)
+        p = run_train(experiment_id, alpha=0.4, l1_ratio=0.1, backend_config=train_backend_config)
         success = p.wait()
         print("Result is ", success)
 
