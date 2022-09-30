@@ -1,3 +1,4 @@
+import os
 import re
 import shlex
 import subprocess
@@ -6,7 +7,7 @@ from threading import RLock
 from pathlib import Path
 from typing import Tuple, List
 
-from jinja2 import Environment, BaseLoader, PackageLoader
+from jinja2 import Environment, BaseLoader, PackageLoader, FileSystemLoader
 from mlflow.utils.logging_utils import _configure_mlflow_loggers
 
 from mlflow import tracking
@@ -186,8 +187,11 @@ class SlurmProjectBackend(AbstractBackend):
 
 
 def generate_sbatch_script(command_str=None, backend_config=None, run_id=None, script_file="generated.sh"):
+    root = os.path.dirname(os.path.abspath(__file__))
+    templates_dir = os.path.join(root, 'templates')
+
     template = Environment(
-        loader=PackageLoader("mlflow_slurm", "templates"),
+        loader=FileSystemLoader(templates_dir),
         trim_blocks=True
     ).get_template("sbatch_template.sh")
 
