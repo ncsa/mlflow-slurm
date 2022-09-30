@@ -37,10 +37,12 @@ CLASSIFIERS = [
 
 
 setuptools.setup(
-    name="mlflow-slurm",
+    name="mlflow_slurm",
     packages=setuptools.find_packages(),
     version=0.1,
     install_requires=REQUIREMENTS,
+    package_data={'mlflow_slurm.templates': ['sbatch_template.sh']},
+    include_package_data=True,
     tests_require=TESTS_REQUIREMENTS,
     python_requires=">=3.6",
     maintainer="Ben Galewsky",
