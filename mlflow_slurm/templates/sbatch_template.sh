@@ -12,5 +12,6 @@
 {% for module in config.modules %}
 module load {{ module }}
 {% endfor %}
+export MLFLOW_RUN_ID={{ run_id }}
 
 {{ command }}
