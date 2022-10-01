@@ -3,6 +3,8 @@ import click
 import numpy as np
 
 import mlflow
+from mlflow.entities import Param, RunTag
+from mlflow.tracking import MlflowClient
 
 tracking_client = mlflow.tracking.MlflowClient()
 
@@ -20,8 +22,11 @@ def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"
         backend="slurm",
         backend_config=backend_config
     )
-    mlflow.set_tag(mlflow.utils.mlflow_tags.MLFLOW_PARENT_RUN_ID, parent_run_id)
-    mlflow.log_params({"alpha": alpha, "l1_ratio": l1_ratio})
+    MlflowClient.set_tag(p.run_id, mlflow.utils.mlflow_tags.MLFLOW_PARENT_RUN_ID, parent_run_id)
+    MlflowClient().log_batch(run_id=p.run_id, metrics=[],
+                             params=[Param("alpha", str(alpha)), Param("alpha", str(alpha))],
+                             tags=[RunTag(mlflow.utils.mlflow_tags.MLFLOW_PARENT_RUN_ID, parent_run_id)])
+
     return p
 
 
