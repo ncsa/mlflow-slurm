@@ -17,8 +17,7 @@ def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"
             entry_point="train",
             parameters={
                 "alpha": str(alpha),
-                "l1_ratio": str(l1_ratio),
-                "run_id": child_run.info.run_id
+                "l1_ratio": str(l1_ratio)
             },
             experiment_id=experiment_id,
             synchronous=False,
