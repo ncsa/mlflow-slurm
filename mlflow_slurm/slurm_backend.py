@@ -69,6 +69,9 @@ class SlurmSubmittedRun(SubmittedRun):
         while not self.is_terminated_or_gone():
             time.sleep(self.POLL_STATUS_INTERVAL)
 
+        with open(f"slurm-{self.slurm_job_id}.out") as file:
+            log_lines = file.read()
+            MlflowClient().log_text(self.run_id, log_lines, f"slurm-{self.slurm_job_id}.out")
         return self._status == RunStatus.FINISHED
 
     def cancel(self) -> None:
