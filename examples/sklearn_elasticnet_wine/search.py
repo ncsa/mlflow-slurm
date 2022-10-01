@@ -9,13 +9,14 @@ from mlflow.tracking import MlflowClient
 tracking_client = mlflow.tracking.MlflowClient()
 
 
-def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json", parent_run_id=None):
+def run_train(experiment_id, alpha, l1_ratio, data_dir, backend_config="slurm_config.json", parent_run_id=None):
     p = mlflow.projects.run(
         uri=os.path.dirname(os.path.realpath(__file__)),
         entry_point="train",
         parameters={
             "alpha": str(alpha),
-            "l1_ratio": str(l1_ratio)
+            "l1_ratio": str(l1_ratio),
+            "data_dir": data_dir
         },
         experiment_id=experiment_id,
         synchronous=False,
@@ -32,7 +33,8 @@ def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"
 @click.command(help="Perform grid search over train (main entry point).")
 @click.option("--num-runs", type=click.INT, default=2, help="Maximum number of runs to evaluate.")
 @click.option("--train-backend-config", type=click.STRING, default="slurm_config.json", help="Json file for training jobs")
-def run(num_runs, train_backend_config):
+@click.option("--data-dir", type=click.STRING, default=".", help="Directory for wine data")
+def run(num_runs, train_backend_config, data_dir):
     provided_run_id = os.environ.get("MLFLOW_RUN_ID", None)
     with mlflow.start_run(run_id=provided_run_id) as run:
         print("Search is run_id ", run.info.run_id)
@@ -42,7 +44,7 @@ def run(num_runs, train_backend_config):
         for alpha, ll_ratio in runs:
             jobs.append(run_train(
                 experiment_id,
-                alpha=alpha, l1_ratio=ll_ratio,
+                alpha=alpha, l1_ratio=ll_ratio, data_dir=data_dir,
                 backend_config=train_backend_config,
                 parent_run_id=provided_run_id)
             )
