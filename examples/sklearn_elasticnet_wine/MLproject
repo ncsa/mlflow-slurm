@@ -20,5 +20,6 @@ entry_points:
     parameters:
         num_runs: {type: int, default: 2}
         data_dir: {type: path, default: .}
+        train_backend_config: {type path, default: slurm_config.json}
 
-    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/search.py --num-runs {num_runs} --data-dir {data_dir}"
+    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/search.py --num-runs {num_runs} --data-dir {data_dir} train-backend-config {train_backend_config}"
