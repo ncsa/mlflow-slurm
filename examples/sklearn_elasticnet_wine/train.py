@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     alpha = float(sys.argv[1]) if len(sys.argv) > 1 else 0.5
     l1_ratio = float(sys.argv[2]) if len(sys.argv) > 2 else 0.5
-    provided_run_id = sys.argv[3] if len(sys.argv) > 3 else None
+    provided_run_id = os.environ.get("MLFLOW_RUN_ID", None)
 
     logger.info(f"Provided run id {provided_run_id}")
     with mlflow.start_run(run_id=provided_run_id):

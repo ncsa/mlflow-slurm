@@ -20,7 +20,7 @@ def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"
             },
             experiment_id=experiment_id,
             synchronous=False,
-            backend="local",
+            backend="slurm",
             backend_config=backend_config
         )
         mlflow.log_params({"alpha": alpha, "l1_ratio": l1_ratio})
