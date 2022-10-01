@@ -22,7 +22,6 @@ def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"
         backend="slurm",
         backend_config=backend_config
     )
-    MlflowClient.set_tag(p.run_id, mlflow.utils.mlflow_tags.MLFLOW_PARENT_RUN_ID, parent_run_id)
     MlflowClient().log_batch(run_id=p.run_id, metrics=[],
                              params=[Param("alpha", str(alpha)), Param("alpha", str(alpha))],
                              tags=[RunTag(mlflow.utils.mlflow_tags.MLFLOW_PARENT_RUN_ID, parent_run_id)])

@@ -1,7 +1,7 @@
 name: tutorial
 
-# conda_env: conda.yaml
-python_env: python_env.yaml
+conda_env: conda.yaml
+# python_env: python_env.yaml
 
 entry_points:
   train:
@@ -9,10 +9,11 @@ entry_points:
       alpha: {type: float, default: 0.5}
       l1_ratio: {type: float, default: 0.1}
       run_id: {type: str, default: ""}
-#    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/train.py {alpha} {l1_ratio} {run_id}"
-    command: "python train.py {alpha} {l1_ratio} {run_id}"
+    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/train.py {alpha} {l1_ratio} {run_id}"
+#    command: "python train.py {alpha} {l1_ratio} {run_id}"
 
   search:
     parameters:
         num_runs: {type: int, default: 2}
     command: "python search.py --num-runs {num_runs}"
+    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/search.py --num-runs {num_runs}"
