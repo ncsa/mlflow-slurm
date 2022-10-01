@@ -1,41 +1,37 @@
+import logging
 import os
 import re
 import shlex
 import subprocess
 import time
-from threading import RLock
 from pathlib import Path
+from threading import RLock
 from typing import Tuple, List
 
-from jinja2 import Environment, BaseLoader, PackageLoader, FileSystemLoader
-from mlflow.utils.logging_utils import _configure_mlflow_loggers
+from jinja2 import Environment, FileSystemLoader
 
 from mlflow import tracking
-
-import mlflow
-import logging
 from mlflow.entities import RunStatus
+from mlflow.projects import load_project
+from mlflow.projects.backend.abstract_backend import AbstractBackend
+from mlflow.projects.submitted_run import SubmittedRun
 from mlflow.projects.utils import (
     fetch_and_validate_project, get_or_create_run,
     PROJECT_STORAGE_DIR, PROJECT_ENV_MANAGER, get_entry_point_command
 )
-from mlflow.projects.backend.abstract_backend import AbstractBackend
-from mlflow.projects.submitted_run import SubmittedRun
-from mlflow.projects import load_project, env_type
-from mlflow.exceptions import ExecutionException
 from mlflow.tracking import MlflowClient
-from mlflow.utils import env_manager as _EnvManager
 from mlflow.utils.conda import get_or_create_conda_env, get_conda_command
 from mlflow.utils.environment import _PythonEnv
+from mlflow.utils.logging_utils import _configure_mlflow_loggers
 from mlflow.utils.mlflow_tags import MLFLOW_PROJECT_ENV
 from mlflow.utils.virtualenv import _install_python, _get_mlflow_virtualenv_root, \
     _get_virtualenv_name, _create_virtualenv
 
 _configure_mlflow_loggers(root_module_name=__name__)
 _logger = logging.getLogger(__name__)
-_logger.setLevel("DEBUG")
 
 
+# Entrypoint for Project Backend
 def slurm_backend_builder() -> AbstractBackend:
     return SlurmProjectBackend()
 
@@ -47,6 +43,7 @@ class SlurmSubmittedRun(SubmittedRun):
     :param slurm_job_id: ID of the submitted Slurm Job.
     :param mlflow_run_id: ID of the MLflow project run.
     """
+
     def __init__(self, mlflow_run_id: str, slurm_job_id: str) -> None:
         super().__init__()
         self._mlflow_run_id = mlflow_run_id
@@ -66,12 +63,19 @@ class SlurmSubmittedRun(SubmittedRun):
         return not self._status or RunStatus.is_terminated(self._status)
 
     def wait(self):
+        """
+        Implements the wait functionality for a slurm job. When we notice that the job
+        is complete, attempt to grab the job logs and attach them to the run as an
+        artifact
+        :return: Boolean success
+        """
         while not self.is_terminated_or_gone():
             time.sleep(self.POLL_STATUS_INTERVAL)
 
         with open(f"slurm-{self.slurm_job_id}.out") as file:
             log_lines = file.read()
-            MlflowClient().log_text(self.run_id, log_lines, f"slurm-{self.slurm_job_id}.txt")
+            MlflowClient().log_text(self.run_id, log_lines,
+                                    f"slurm-{self.slurm_job_id}.txt")
         return self._status == RunStatus.FINISHED
 
     def cancel(self) -> None:
@@ -90,7 +94,8 @@ class SlurmSubmittedRun(SubmittedRun):
             job = output[1]  # First line is header
             with self._status_lock:
                 if not job:
-                    _logger.warning(f"Looking for status of job {self.slurm_job_id}, but it is gone")
+                    _logger.warning(
+                        f"Looking for status of job {self.slurm_job_id}, but it is gone")
                     self._status = RunStatus.FINISHED
 
                 job_status = output[1].split(",")[1]
@@ -107,19 +112,26 @@ class SlurmSubmittedRun(SubmittedRun):
                         or job_status == "PR":
                     self._status = RunStatus.RUNNING
                 else:
-                    _logger.warning(f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
-                    self._status =  None
+                    _logger.warning(
+                        f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
+                    self._status = None
 
 
 class SlurmProjectBackend(AbstractBackend):
     @staticmethod
-    def sbatch(script: str):
+    def sbatch(script: str) -> str:
+        """
+        Submit a script to the slurm batch manager
+        :param script: The filename of the script
+        :return: The Slurm Job ID or None of the submit fails
+        """
         job_re = "Submitted batch job (\\d+)"
         with subprocess.Popen(f"sbatch {script}",
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, shell=True) as p:
             return_code = p.wait()
             if return_code == 0:
+                # Parse stdout to find the job ID
                 sbatch_output = p.stdout.read().decode('utf-8')
                 match = re.search(job_re, sbatch_output)
                 if not match:
@@ -132,12 +144,15 @@ class SlurmProjectBackend(AbstractBackend):
                 print(f"SBatch Error:{sbatch_err}")
                 return None
 
-    def run(self, project_uri, entry_point, params, version, backend_config, tracking_uri,
-            experiment_id):
+    def run(self, project_uri: str, entry_point: str, params: dict, version: str,
+            backend_config: dict, tracking_uri: str,
+            experiment_id: str) -> SlurmSubmittedRun:
 
         work_dir = fetch_and_validate_project(project_uri, version, entry_point, params)
-        active_run = get_or_create_run(None, project_uri, experiment_id, work_dir, version,
+        active_run = get_or_create_run(None, project_uri, experiment_id, work_dir,
+                                       version,
                                        entry_point, params)
+
         _logger.info(f"run_id={active_run.info.run_id}")
         _logger.info(f"work_dir={work_dir}")
 
@@ -152,7 +167,6 @@ class SlurmProjectBackend(AbstractBackend):
 
         command_args = []
         command_separator = " "
-        env_manager = backend_config[PROJECT_ENV_MANAGER]
         storage_dir = backend_config[PROJECT_STORAGE_DIR]
 
         if project.env_type == "python_env":
@@ -166,19 +180,29 @@ class SlurmProjectBackend(AbstractBackend):
             work_dir_path = Path(work_dir)
             env_name = _get_virtualenv_name(python_env, work_dir_path)
             env_dir = Path(env_root).joinpath(env_name)
-            activate_cmd = _create_virtualenv(work_dir_path, python_bin_path, env_dir, python_env)
+            activate_cmd = _create_virtualenv(work_dir_path, python_bin_path, env_dir,
+                                              python_env)
             command_args += [activate_cmd]
         elif project.env_type == "conda_env":
-            tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV, "conda")
+            tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV,
+                                            "conda")
             command_separator = " && "
             conda_env_name = get_or_create_conda_env(project.env_config_path)
             command_args += get_conda_command(conda_env_name)
+        else:
+            _logger.fatal(f"Unknown project environment type provided: {project.env_type}")
+            return None
 
         command_args += get_entry_point_command(project, entry_point, params, storage_dir)
         command_str = command_separator.join(command_args)
 
-        sbatch_file = backend_config.get("sbatch-script-file", f"sbatch-{active_run.info.run_id}.sh")
-        generate_sbatch_script(command_str, backend_config, active_run.info.run_id, sbatch_file)
+        # Allow user to specify a filename for the batch file. If none provided then
+        # generate one based on the job ID
+        sbatch_file = backend_config.get("sbatch-script-file",
+                                         f"sbatch-{active_run.info.run_id}.sh")
+
+        generate_sbatch_script(command_str, backend_config, active_run.info.run_id,
+                               sbatch_file)
 
         job_id = SlurmProjectBackend.sbatch(sbatch_file)
         MlflowClient().set_tag(active_run.info.run_id, "slurm_job_id", job_id)
@@ -190,7 +214,9 @@ class SlurmProjectBackend(AbstractBackend):
         pass
 
 
-def generate_sbatch_script(command_str=None, backend_config=None, run_id=None, script_file="generated.sh"):
+def generate_sbatch_script(command_str: str = None, backend_config: dict = None,
+                           run_id: str = None, script_file: str = None):
+    # Find the batch script template deployed with this package
     root = os.path.dirname(os.path.abspath(__file__))
     templates_dir = os.path.join(root, 'templates')
 
