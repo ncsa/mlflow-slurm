@@ -71,7 +71,7 @@ class SlurmSubmittedRun(SubmittedRun):
 
         with open(f"slurm-{self.slurm_job_id}.out") as file:
             log_lines = file.read()
-            MlflowClient().log_text(self.run_id, log_lines, f"slurm-{self.slurm_job_id}.out")
+            MlflowClient().log_text(self.run_id, log_lines, f"slurm-{self.slurm_job_id}.txt")
         return self._status == RunStatus.FINISHED
 
     def cancel(self) -> None:
