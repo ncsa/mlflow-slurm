@@ -7,25 +7,22 @@ import mlflow
 tracking_client = mlflow.tracking.MlflowClient()
 
 
-def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json"):
-    with mlflow.start_run(nested=True) as child_run:
-        print("Child is run_id ", child_run.info.run_id)
-
-        p = mlflow.projects.run(
-            run_id=child_run.info.run_id,
-            uri=os.path.dirname(os.path.realpath(__file__)),
-            entry_point="train",
-            parameters={
-                "alpha": str(alpha),
-                "l1_ratio": str(l1_ratio)
-            },
-            experiment_id=experiment_id,
-            synchronous=False,
-            backend="slurm",
-            backend_config=backend_config
-        )
-        mlflow.log_params({"alpha": alpha, "l1_ratio": l1_ratio})
-        return p
+def run_train(experiment_id, alpha, l1_ratio, backend_config="slurm_config.json", parent_run_id=None):
+    p = mlflow.projects.run(
+        uri=os.path.dirname(os.path.realpath(__file__)),
+        entry_point="train",
+        parameters={
+            "alpha": str(alpha),
+            "l1_ratio": str(l1_ratio)
+        },
+        experiment_id=experiment_id,
+        synchronous=False,
+        backend="slurm",
+        backend_config=backend_config
+    )
+    mlflow.set_tag(mlflow.utils.mlflow_tags.MLFLOW_PARENT_RUN_ID, parent_run_id)
+    mlflow.log_params({"alpha": alpha, "l1_ratio": l1_ratio})
+    return p
 
 
 @click.command(help="Perform grid search over train (main entry point).")
@@ -42,10 +39,11 @@ def run(num_runs, train_backend_config):
             jobs.append(run_train(
                 experiment_id,
                 alpha=alpha, l1_ratio=ll_ratio,
-                backend_config=train_backend_config)
+                backend_config=train_backend_config,
+                parent_run_id=provided_run_id)
             )
         results = map(lambda job: job.wait(), jobs)
-        print(results)
+        print(list(results))
 
 
 if __name__ == "__main__":
