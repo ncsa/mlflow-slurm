@@ -32,15 +32,16 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(40)
 
-    # Read the wine-quality csv file from the URL
-    csv_url = (
-        "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
-    )
+    alpha = float(sys.argv[1]) if len(sys.argv) > 1 else 0.5
+    l1_ratio = float(sys.argv[2]) if len(sys.argv) > 2 else 0.5
+    data_file_path = sys.argv[3] if len(sys.argv) > 3 else "./wine_data.csv"
+    provided_run_id = os.environ.get("MLFLOW_RUN_ID", None)
+
     try:
-        data = pd.read_csv(csv_url, sep=";")
+        data = pd.read_csv(data_file_path, sep=";")
     except Exception as e:
         logger.exception(
-            "Unable to download training & test CSV, check your internet connection. Error: %s", e
+            "Unable to read training & test CSV, check your path. Error: %s", e
         )
 
     # Split the data into training and test sets. (0.75, 0.25) split.
@@ -51,10 +52,6 @@ if __name__ == "__main__":
     test_x = test.drop(["quality"], axis=1)
     train_y = train[["quality"]]
     test_y = test[["quality"]]
-
-    alpha = float(sys.argv[1]) if len(sys.argv) > 1 else 0.5
-    l1_ratio = float(sys.argv[2]) if len(sys.argv) > 2 else 0.5
-    provided_run_id = os.environ.get("MLFLOW_RUN_ID", None)
 
     logger.info(f"Provided run id {provided_run_id}")
     with mlflow.start_run(run_id=provided_run_id):

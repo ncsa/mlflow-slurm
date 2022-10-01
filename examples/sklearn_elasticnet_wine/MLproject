@@ -1,19 +1,24 @@
 name: tutorial
 
-conda_env: conda.yaml
-# python_env: python_env.yaml
+# conda_env: conda.yaml
+python_env: python_env.yaml
 
 entry_points:
+  download_data:
+    parameters:
+        data_dir: {type: path, default: .}
+    command: "wget http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv -O {data_dir}/wine-data.csv"
+
   train:
     parameters:
       alpha: {type: float, default: 0.5}
       l1_ratio: {type: float, default: 0.1}
-      run_id: {type: str, default: ""}
-    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/train.py {alpha} {l1_ratio} {run_id}"
-#    command: "python train.py {alpha} {l1_ratio} {run_id}"
+      data_dir: {type: path, default: .}
+    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/train.py {alpha} {l1_ratio} {data_dir}/wine-data.csv"
 
   search:
     parameters:
         num_runs: {type: int, default: 2}
-    command: "python search.py --num-runs {num_runs}"
-    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/search.py --num-runs {num_runs}"
+        data_dir: {type: path, default: .}
+
+    command: "python /u/bengal1/mlflow-slurm/examples/sklearn_elasticnet_wine/search.py --num-runs {num_runs} --data-dir {data_dir}"
