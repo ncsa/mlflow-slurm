@@ -47,7 +47,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     version=version,
     install_requires=REQUIREMENTS,
-    package_data={'mlflow_slurm.templates': ['sbatch_template.sh']},
+    # package_data={'mlflow_slurm.templates': ['sbatch_template.sh']},
     include_package_data=True,
     tests_require=TESTS_REQUIREMENTS,
     python_requires=">=3.6",
