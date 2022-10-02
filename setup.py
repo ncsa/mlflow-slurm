@@ -1,6 +1,12 @@
 import os
 import setuptools
 
+version = os.getenv("mlflow_slurm_version")
+if version is None:
+    version = "0.1a1"
+else:
+    version = version.split("/")[-1]
+
 here = os.path.abspath(os.path.dirname(__file__))
 
 DESCRIPTION = "Backend implementation for running MLFlow projects on Slurm"
@@ -39,7 +45,7 @@ CLASSIFIERS = [
 setuptools.setup(
     name="mlflow_slurm",
     packages=setuptools.find_packages(),
-    version=0.1,
+    version=version,
     install_requires=REQUIREMENTS,
     package_data={'mlflow_slurm.templates': ['sbatch_template.sh']},
     include_package_data=True,
