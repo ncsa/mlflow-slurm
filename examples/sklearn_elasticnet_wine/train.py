@@ -17,6 +17,8 @@ import mlflow.sklearn
 
 import logging
 
+from mlflow.models import infer_signature
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,9 @@ if __name__ == "__main__":
             # There are other ways to use the Model Registry, which depends on the use case,
             # please refer to the doc for more information:
             # https://mlflow.org/docs/latest/model-registry.html#api-workflow
-            mlflow.sklearn.log_model(lr, "model", registered_model_name="ElasticnetWineModel")
+            signature = infer_signature(data, predicted_qualities)
+
+            mlflow.sklearn.log_model(lr, "model", signature=signature,
+                                     registered_model_name="ElasticnetWineModel")
         else:
             mlflow.sklearn.log_model(lr, "model")
