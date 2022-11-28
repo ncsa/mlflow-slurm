@@ -38,13 +38,14 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Topic :: Software Development :: Libraries"
 ]
 
 
 setuptools.setup(
     name="mlflow_slurm",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_namespace_packages(where='.'),
     version=version,
     install_requires=REQUIREMENTS,
     package_data={'mlflow_slurm.templates': ['sbatch_template.sh']},
