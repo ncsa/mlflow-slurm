@@ -8,6 +8,9 @@
 {% if config.gpus_per_node %}
 #SBATCH --gpus-per-node={{ config.gpus_per_node }}
 {% endif %}
+{% if config.gres %}
+#SBATCH --gres={{ config.gres }}
+{% endif %}
 {% if config.mem %}
 #SBATCH --mem={{ config.mem }}
 {% endif %}
