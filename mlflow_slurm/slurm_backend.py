@@ -187,8 +187,8 @@ class SlurmProjectBackend(AbstractBackend):
             tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV,
                                             "conda")
             command_separator = " && "
-            conda_env_name = get_or_create_conda_env(project.env_config_path)
-            command_args += get_conda_command(conda_env_name)
+            conda_env = get_or_create_conda_env(project.env_config_path)
+            command_args += conda_env.get_activate_command()
         else:
             _logger.fatal(f"Unknown project environment type provided: {project.env_type}")
             return None
