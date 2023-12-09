@@ -1,6 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=MLFlow{{ run_id }}
+{% if config.partition %}
 #SBATCH --partition={{ config.partition }}
+{% endif %}
 {% if config.account %}
 #SBATCH --account={{ config.account }}
 {% endif %}
