@@ -25,10 +25,12 @@ properties in this file are:
 |-------------------|----------------------------------------------------------------------------------------------------------------|
 |partition          | Which Slurm partition should the job run in?                                                                   |
  |account            | What account name to run under                                                                                 |
+| environment       | List of additional environment variables to add to the job
 | gpus_per_node     | On GPU partitions how many GPUs to allocate per node                                                           |
 | gres              | SLURM Generic RESources requests                                                                               |
 | mem               | Amount of memory to allocate to CPU jobs                                                                       |
 | modules           | List of modules to load before starting job                                                                    |
+| nodes             | Number of nodes to request from SLURM                                                                          |
 | time              | Max CPU time job may run                                                                                       |
 | sbatch-script-file | Name of batch file to be produced. Leave blank to have service generate a script file name based on the run ID |
 
