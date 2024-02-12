@@ -19,6 +19,9 @@
 {% if config.time %}
 #SBATCH --time={{ config.time }}
 {% endif %}
+{% if config.nodes %}
+#SBATCH --nodes={{ config.nodes }}
+{% endif %}
 module reset # drop modules and explicitly load the ones needed
              # (good job metadata and reproducibility)
              # $WORK and $SCRATCH are now set
@@ -26,6 +29,15 @@ module reset # drop modules and explicitly load the ones needed
 module load {{ module }}
 {% endfor %}
 module list  # job documentation and metadata
+
+{% for env in config.environment %}
+export {{ env }}
+{% endfor %}
+
 export MLFLOW_RUN_ID={{ run_id }}
 echo "job is starting on `hostname`"
+{% if config.nodes %}
+srun --export=ALL /bin/bash -c '{{ command }}' 
+{% else %}
 {{ command }}
+{% endif %}
