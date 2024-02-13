@@ -1,1 +1,2 @@
-mlflow
+mlflow-skinny
+jinja2
