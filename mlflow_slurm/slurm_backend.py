@@ -44,10 +44,10 @@ class SlurmSubmittedRun(SubmittedRun):
     :param mlflow_run_id: ID of the MLflow project run.
     """
 
-    def __init__(self, mlflow_run_id: str, slurm_job_id: str) -> None:
+    def __init__(self, mlflow_run_id: str, slurm_job_ids: List[str]) -> None:
         super().__init__()
         self._mlflow_run_id = mlflow_run_id
-        self.slurm_job_id = slurm_job_id
+        self.slurm_job_ids = slurm_job_ids
         self._status = RunStatus.SCHEDULED
         self._status_lock = RLock()
 
@@ -57,6 +57,13 @@ class SlurmSubmittedRun(SubmittedRun):
     @property
     def run_id(self) -> str:
         return self._mlflow_run_id
+
+    @property
+    def job_id(self) -> str:
+        """
+        :return: The final Slurm Job ID of the submitted job list.
+        """
+        return self.slurm_job_ids[-1]
 
     def is_terminated_or_gone(self):
         self._update_status()
@@ -119,14 +126,20 @@ class SlurmSubmittedRun(SubmittedRun):
 
 class SlurmProjectBackend(AbstractBackend):
     @staticmethod
-    def sbatch(script: str) -> str:
+    def sbatch(script: str, previous_job: str="") -> str:
         """
         Submit a script to the slurm batch manager
         :param script: The filename of the script
         :return: The Slurm Job ID or None of the submit fails
         """
         job_re = "Submitted batch job (\\d+)"
-        with subprocess.Popen(f"sbatch {script}",
+
+        # If there is a previous job in a set of sequential workers, we want to
+        # wait for it to finish before starting this one
+        sbatch_command = f"sbatch {script}" if not previous_job \
+                else f"sbatch --dependency=afterok:{previous_job} {script}"
+
+        with subprocess.Popen(sbatch_command,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, shell=True) as p:
             return_code = p.wait()
@@ -148,6 +161,7 @@ class SlurmProjectBackend(AbstractBackend):
             backend_config: dict, tracking_uri: str,
             experiment_id: str) -> SlurmSubmittedRun:
 
+        print(f"Ready to submit with params: {params}")
         work_dir = fetch_and_validate_project(project_uri, version, entry_point, params)
         active_run = get_or_create_run(None, project_uri, experiment_id, work_dir,
                                        version,
@@ -204,11 +218,17 @@ class SlurmProjectBackend(AbstractBackend):
         generate_sbatch_script(command_str, backend_config, active_run.info.run_id,
                                sbatch_file)
 
-        job_id = SlurmProjectBackend.sbatch(sbatch_file)
-        MlflowClient().set_tag(active_run.info.run_id, "slurm_job_id", job_id)
+        previous_job = ""
+        job_ids = []
+        for worker in range(int(params.get("sequential_workers", 1))):
+            job_id = SlurmProjectBackend.sbatch(sbatch_file, previous_job)
+            job_ids.append(job_id)
+            previous_job = job_id
+
+        MlflowClient().set_tag(active_run.info.run_id, "slurm_job_id", job_ids)
         _logger.info(f"slurm job id={job_id}")
 
-        return SlurmSubmittedRun(active_run.info.run_id, job_id)
+        return SlurmSubmittedRun(active_run.info.run_id, job_ids)
 
     def __init__(self):
         pass
