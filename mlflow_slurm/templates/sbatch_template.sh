@@ -6,7 +6,7 @@
 {% if config.account %}
 #SBATCH --account={{ config.account }}
 {% endif %}
-#SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_TRACKING_TOKEN,MLFLOW_TRACKING_USERNAME,MLFLOW_TRACKING_PASSWORD,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID
+#SBATCH --export=MLFLOW_TRACKING_URI,MLFLOW_TRACKING_TOKEN,MLFLOW_TRACKING_USERNAME,MLFLOW_TRACKING_PASSWORD,MLFLOW_S3_ENDPOINT_URL,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID,{{ config.exports |join(',') }}
 {% if config.gpus_per_node %}
 #SBATCH --gpus-per-node={{ config.gpus_per_node }}
 {% endif %}
@@ -37,7 +37,7 @@ export {{ env }}
 export MLFLOW_RUN_ID={{ run_id }}
 echo "job is starting on `hostname`"
 {% if config.nodes %}
-srun --export=ALL /bin/bash -c '{{ command }}' 
+srun --export=ALL /bin/bash -c '{{ command }}'
 {% else %}
 {{ command }}
 {% endif %}

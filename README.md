@@ -23,9 +23,9 @@ properties in this file are:
 
 |Config File Setting| Use                                                                                                            |
 |-------------------|----------------------------------------------------------------------------------------------------------------|
-|partition          | Which Slurm partition should the job run in?                                                                   |
- |account            | What account name to run under                                                                                 |
-| environment       | List of additional environment variables to add to the job
+| partition         | Which Slurm partition should the job run in?                                                                   |
+| environment       | List of additional environment variables to add to the job                                                     |
+| exports           | List of environment variables to export to the job                                                             |
 | gpus_per_node     | On GPU partitions how many GPUs to allocate per node                                                           |
 | gres              | SLURM Generic RESources requests                                                                               |
 | mem               | Amount of memory to allocate to CPU jobs                                                                       |
