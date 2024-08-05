@@ -79,10 +79,10 @@ class SlurmSubmittedRun(SubmittedRun):
         while not self.is_terminated_or_gone():
             time.sleep(self.POLL_STATUS_INTERVAL)
 
-        with open(f"slurm-{self.slurm_job_id}.out") as file:
+        with open(f"slurm-{self.job_id}.out") as file:
             log_lines = file.read()
             MlflowClient().log_text(self.run_id, log_lines,
-                                    f"slurm-{self.slurm_job_id}.txt")
+                                    f"slurm-{self.job_id}.txt")
         return self._status == RunStatus.FINISHED
 
     def cancel(self) -> None:
@@ -92,7 +92,7 @@ class SlurmSubmittedRun(SubmittedRun):
         return self._status
 
     def _update_status(self) -> RunStatus:
-        with subprocess.Popen(f"squeue --state=all --job={self.slurm_job_id} -o%A,%t",
+        with subprocess.Popen(f"squeue --state=all --job={self.job_id} -o%A,%t",
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, shell=True,
                               universal_newlines=True) as p:
@@ -102,7 +102,7 @@ class SlurmSubmittedRun(SubmittedRun):
             with self._status_lock:
                 if not job:
                     _logger.warning(
-                        f"Looking for status of job {self.slurm_job_id}, but it is gone")
+                        f"Looking for status of job {self.job_id}, but it is gone")
                     self._status = RunStatus.FINISHED
 
                 job_status = output[1].split(",")[1]
@@ -120,7 +120,7 @@ class SlurmSubmittedRun(SubmittedRun):
                     self._status = RunStatus.RUNNING
                 else:
                     _logger.warning(
-                        f"Job ID {self.slurm_job_id} has an unmapped status of {job_status}")
+                        f"Job ID {self.job_id} has an unmapped status of {job_status}")
                     self._status = None
 
 
@@ -220,6 +220,7 @@ class SlurmProjectBackend(AbstractBackend):
 
         previous_job = ""
         job_ids = []
+        job_id = "N/A"
         for worker in range(int(params.get("sequential_workers", 1))):
             job_id = SlurmProjectBackend.sbatch(sbatch_file, previous_job)
             job_ids.append(job_id)
