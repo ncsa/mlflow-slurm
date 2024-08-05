@@ -21,21 +21,24 @@ Slurm `sbatch` command. It will tag the run with the Slurm JobID
 You can set values in a json file to control job submission. The supported
 properties in this file are:
 
-|Config File Setting| Use                                                                                                            |
-|-------------------|----------------------------------------------------------------------------------------------------------------|
-|partition          | Which Slurm partition should the job run in?                                                                   |
- |account            | What account name to run under                                                                                 |
-| environment       | List of additional environment variables to add to the job
-| gpus_per_node     | On GPU partitions how many GPUs to allocate per node                                                           |
-| gres              | SLURM Generic RESources requests                                                                               |
-| mem               | Amount of memory to allocate to CPU jobs                                                                       |
-| modules           | List of modules to load before starting job                                                                    |
-| nodes             | Number of nodes to request from SLURM                                                                          |
-| time              | Max CPU time job may run                                                                                       |
-| sbatch-script-file | Name of batch file to be produced. Leave blank to have service generate a script file name based on the run ID |
+| Config File Setting | Use                                                                                                            |
+|---------------------|----------------------------------------------------------------------------------------------------------------|
+| partition           | Which Slurm partition should the job run in?                                                                   |
+| account             | What account name to run under                                                                                 |
+| environment         | List of additional environment variables to add to the job                                                     |
+| exports             | List of environment variables to export to the job                                                             |
+| gpus_per_node       | On GPU partitions how many GPUs to allocate per node                                                           |
+| gres                | SLURM Generic RESources requests                                                                               |
+| mem                 | Amount of memory to allocate to CPU jobs                                                                       |
+| modules             | List of modules to load before starting job                                                                    |
+| nodes               | Number of nodes to request from SLURM                                                                          |
+| ntasks              | Number of tasks to run on each node                                                                            |
+| exclusive           | Set to `true` to insure jobs don't share a node with other jobs                                                |
+| time                | Max CPU time job may run                                                                                       |
+| sbatch-script-file  | Name of batch file to be produced. Leave blank to have service generate a script file name based on the run ID |
 
 ## Sequential Worker Jobs
-There are occaisions where you have a job that can't finish in the maxiumum
+There are occasions where you have a job that can't finish in the maximum
 allowable wall time. If you are able to write out a checkpoint file, you can
 use sequential worker jobs to continue the job where it left off. This is
 useful for training deep learning models or other long running jobs.

@@ -22,6 +22,12 @@
 {% if config.nodes %}
 #SBATCH --nodes={{ config.nodes }}
 {% endif %}
+{% if config.ntasks %}
+#SBATCH --ntasks={{ config.ntasks }}
+{% endif %}
+{% if config.exclusive %}
+#SBATCH --exclusive
+{% endif %}
 module reset # drop modules and explicitly load the ones needed
              # (good job metadata and reproducibility)
              # $WORK and $SCRATCH are now set
